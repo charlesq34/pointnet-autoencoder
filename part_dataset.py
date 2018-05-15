@@ -131,7 +131,6 @@ class PartDataset():
 if __name__ == '__main__':
     d = PartDataset(root = os.path.join(BASE_DIR, 'data/shapenetcore_partanno_segmentation_benchmark_v0'), class_choice = ['Chair'], split='trainval')
     print(len(d))
-    raw_input()
     import time
     tic = time.time()
     i = 100

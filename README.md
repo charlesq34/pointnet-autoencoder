@@ -9,14 +9,14 @@ We need TensorFlow (version>=1.4). For point cloud reconstruction loss function,
 ## Download Data
 ShapeNetPart dataset is available <a href="https://1drv.ms/u/s!ApbTjxa06z9CgRnwX_QiGwiCoWnt" target="_blank">HERE</a> on OneDrive. Simply download the zip file and move the `shapenetcore_partanno_segmentation_benchmark_v0` folder to `data`.
 
-To visualize the dataset, run:
+To visualize the dataset, run (type `q` to go to the next shape, see `show3d_balls.py` for more detailed hot keys):
 
     python part_dataset.py
 
 ## Train an Autoencoder
 To train the most basic autoencoder (fully connected layer decoder with Chamfer's distance loss) on chair models with aligned poses, simply run the following command:
 
-    python train.py --model model --log_dir log_model_chair --num_point 2048 --category Chair --no_rotation
+    python train.py --model model --log_dir log_chair_norotation --num_point 2048 --category Chair --no_rotation
 
 You can check more options for training by:
 
@@ -25,7 +25,7 @@ You can check more options for training by:
 ## Visualize Reconstruction on Test Set
 To test and visualize results of the trained autoencoder above, simply run:
 
-    python test.py --model model --model_path log_model_chair/model.ckpt --category Chair
+    python test.py --model model --model_path log_chair_norotation/model.ckpt --category Chair
 
 You can check more options for testing by:
     
