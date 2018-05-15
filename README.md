@@ -1,2 +1,32 @@
 # pointnet-autoencoder
 Autoencoder for Point Clouds
+
+Here we present code to build an autoencoder for point clouds, with <a href="https://github.com/charlesq34/pointnet">PointNet</a> encoder and various kinds of decoders. We train and test our autoencoder on the <a href="https://cs.stanford.edu/~ericyi/project_page/part_annotation/index.html" target="_blank">ShapeNetPart dataset</a>. This repository is licensed under MIT license.
+
+## Installation
+We need TensorFlow (version>=1.4). For point cloud reconstruction loss function, we need to compile two custum TF operators under `tf_ops/nn_distance` (Chamfer's distance) and `tf_ops/approxmatch` (earth mover's distance). Check the `tf_compile_*.sh` script under these two folders, modify the TensorFlow and CUDA path accordingly before you run the shell script to compile the operators. For a visualization helper, go to `utils/` and run `sh compile_render_balls_so.sh` -- run `python show3d_balls.py` to test if you have successfully compiled it.
+
+## Download Data
+ShapeNetPart dataset is available <a href="https://1drv.ms/u/s!ApbTjxa06z9CgRnwX_QiGwiCoWnt" target="_blank">HERE</a> on OneDrive. Simply download the zip file and move the `shapenetcore_partanno_segmentation_benchmark_v0` folder to `data`.
+
+To visualize the dataset, run:
+
+    python part_dataset.py
+
+## Train an Autoencoder
+To train the most basic autoencoder (fully connected layer decoder with Chamfer's distance loss) on chair models with aligned poses, simply run the following command:
+
+    python train.py --model model --log_dir log_model_chair --num_point 2048 --category Chair --no_rotation
+
+You can check more options for training by:
+
+    python train.py -h
+
+## Visualize Reconstruction on Test Set
+To test and visualize results of the trained autoencoder above, simply run:
+
+    python test.py --model model --model_path log_model_chair/model.ckpt --category Chair
+
+You can check more options for testing by:
+    
+    python test.py -h
