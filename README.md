@@ -2,13 +2,13 @@
 
 ![prediction example](https://github.com/charlesq34/pointnet-autoencoder/blob/master/doc/teaser.jpg)
 
-Here we present code to build an autoencoder for point clouds, with <a href="https://github.com/charlesq34/pointnet">PointNet</a> encoder and various kinds of decoders. We train and test our autoencoder on the <a href="https://cs.stanford.edu/~ericyi/project_page/part_annotation/index.html" target="_blank">ShapeNetPart dataset</a>. This is side project I played with recently -- you are welcomed to modify it for your own projects or research. Let me know if you discover something interesting!
+Here we present code to build an autoencoder for point clouds, with <a href="https://github.com/charlesq34/pointnet">PointNet</a> encoder and various kinds of decoders. We train and test our autoencoder on the <a href="https://cs.stanford.edu/~ericyi/project_page/part_annotation/index.html" target="_blank">ShapeNetPart dataset</a>. This is a side project I played with recently -- you are welcomed to modify it for your own projects or research. Let me know if you discover something interesting!
 
 ## LICENSE
-This repository is under MIT license. See the LICENSE file for detail.
+This repository is under the MIT license. See the LICENSE file for detail.
 
 ## Installation
-We need TensorFlow (version>=1.4).
+We need <a href="https://www.tensorflow.org/install/" target="_blank">TensorFlow</a> (version>=1.4).
 
 For point cloud reconstruction loss function, we need to compile two custum TF operators under `tf_ops/nn_distance` (Chamfer's distance) and `tf_ops/approxmatch` (earth mover's distance). Check the `tf_compile_*.sh` script under these two folders, modify the TensorFlow and CUDA path accordingly before you run the shell script to compile the operators. Check this <a href="https://arxiv.org/abs/1612.00603" target="_blank">PAPER</a> for an introduction for these two point cloud losses.
 
