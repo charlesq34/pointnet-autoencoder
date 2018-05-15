@@ -5,7 +5,7 @@
 Here we present code to build an autoencoder for point clouds, with <a href="https://github.com/charlesq34/pointnet">PointNet</a> encoder and various kinds of decoders. We train and test our autoencoder on the <a href="https://cs.stanford.edu/~ericyi/project_page/part_annotation/index.html" target="_blank">ShapeNetPart dataset</a>. This is side project I played with recently -- you are welcomed to modify it for your own projects or research. Let me know if you discover something interesting!
 
 ## LICENSE
-This repository is licensed under MIT license. See the LICENSE file for detail.
+This repository is under MIT license. See the LICENSE file for detail.
 
 ## Installation
 We need TensorFlow (version>=1.4).
