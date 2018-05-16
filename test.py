@@ -59,7 +59,7 @@ def get_model(batch_size, num_point):
 def inference(sess, ops, pc, batch_size):
     ''' pc: BxNx3 array, return BxN pred '''
     assert pc.shape[0]%batch_size == 0
-    num_batches = pc.shape[0]/batch_size
+    num_batches = pc.shape[0] // batch_size
     logits = np.zeros((pc.shape[0], pc.shape[1], 3))
     for i in range(num_batches):
         feed_dict = {ops['pointclouds_pl']: pc[i*batch_size:(i+1)*batch_size,...],
@@ -80,7 +80,7 @@ if __name__=='__main__':
     np.random.shuffle(indices)
     for i in range(len(TEST_DATASET)):
         ps, seg = TEST_DATASET[indices[i]]
-        pred = inference(sess, ops, np.expand_dims(ps,0), batch_size=1) 
+        pred = inference(sess, ops, np.expand_dims(ps,0), batch_size=1)
         pred = pred.squeeze()
 
         show3d_balls.showpoints(ps, ballradius=8)
