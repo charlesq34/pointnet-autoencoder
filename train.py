@@ -121,6 +121,10 @@ def train():
             # Add ops to save and restore all the variables.
             saver = tf.train.Saver()
 
+        # Statistic parameters
+        parameter_num = np.sum([np.prod(v.shape.as_list()) for v in tf.trainable_variables()])
+        print('Parameter number: {}'.format(parameter_num))
+
         # Create a session
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True

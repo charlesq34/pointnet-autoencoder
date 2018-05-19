@@ -16,9 +16,13 @@ import tf_util
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/nn_distance'))
 import tf_nndistance
 
-def placeholder_inputs(batch_size, num_point):
-    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3))
-    labels_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3))
+num_point = 0
+
+def placeholder_inputs(batch_size, n_point):
+    global num_point
+    num_point = n_point
+    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, None, 3))
+    labels_pl = tf.placeholder(tf.float32, shape=(batch_size, None, 3))
     return pointclouds_pl, labels_pl
 
 
@@ -32,8 +36,8 @@ def get_model(point_cloud, is_training, bn_decay=None):
         net: TF tensor BxNx3, reconstructed point clouds
         end_points: dict
     """
+    global num_point
     batch_size = point_cloud.get_shape()[0].value
-    num_point = point_cloud.get_shape()[1].value
     point_dim = point_cloud.get_shape()[2].value
     end_points = {}
 
@@ -60,8 +64,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
                          scope='conv5', bn_decay=bn_decay)
-    global_feat = tf_util.max_pool2d(net, [num_point,1],
-                                     padding='VALID', scope='maxpool')
+    global_feat = tf.reduce_max(net, axis=1, keepdims=False)
 
     net = tf.reshape(global_feat, [batch_size, -1])
     end_points['embedding'] = net

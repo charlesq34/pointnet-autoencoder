@@ -38,3 +38,15 @@ To test and visualize results of the trained autoencoder above, simply run:
 You can check more options for testing by:
     
     python test.py -h
+
+### Evaluation origin
+
+model(nn)       8552576 0.0026
+
+model_emd       8552576 0.0028
+
+model_upconv    5892995 0.0023
+
+model_hierachy  9568417 0.0023
+
+model_fc_upconv 6880644 0.0023

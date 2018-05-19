@@ -11,7 +11,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(BASE_DIR) # model
 sys.path.append(ROOT_DIR) # provider
-sys.path.append(os.path.join(ROOT_DIR, 'models'))
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import show3d_balls
 import part_dataset
@@ -21,14 +20,14 @@ parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU
 parser.add_argument('--num_point', type=int, default=2048, help='Point Number [default: 2048]')
 parser.add_argument('--category', default=None, help='Which single class to train on [default: None]')
 parser.add_argument('--model', default='model', help='Model name [default: model]')
-parser.add_argument('--model_path', default='log/model.ckpt', help='model checkpoint file path [default: log/model.ckpt]')
+parser.add_argument('--log_path', default='./log', help='model checkpoint file path [default: ./log]')
 parser.add_argument('--num_group', type=int, default=1, help='Number of groups of generated points -- used for hierarchical FC decoder. [default: 1]')
 FLAGS = parser.parse_args()
 
 
-MODEL_PATH = FLAGS.model_path
 GPU_INDEX = FLAGS.gpu
 NUM_POINT = FLAGS.num_point
+sys.path.append(FLAGS.log_path)
 MODEL = importlib.import_module(FLAGS.model) # import network module
 DATA_PATH = os.path.join(BASE_DIR, 'data/shapenetcore_partanno_segmentation_benchmark_v0')
 TEST_DATASET = part_dataset.PartDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, class_choice=FLAGS.category, split='test',normalize=True)
@@ -47,8 +46,12 @@ def get_model(batch_size, num_point):
         config.gpu_options.allow_growth = True
         config.allow_soft_placement = True
         sess = tf.Session(config=config)
+        # Statistic parameters
+        parameter_num = np.sum([np.prod(v.shape.as_list()) for v in tf.trainable_variables()])
+        print('Parameter number: {}'.format(parameter_num))
         # Restore variables from disk.
-        saver.restore(sess, MODEL_PATH)
+        checkpoint_file = tf.train.latest_checkpoint(FLAGS.log_path)
+        saver.restore(sess, checkpoint_file)
         ops = {'pointclouds_pl': pointclouds_pl,
                'labels_pl': labels_pl,
                'is_training_pl': is_training_pl,

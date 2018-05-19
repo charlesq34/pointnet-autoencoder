@@ -77,7 +77,7 @@ if __name__=='__main__':
 		while True:
 			meanloss=0
 			meantrueloss=0
-			for i in xrange(1001):
+			for i in range(1001):
 				#phi=np.random.rand(4*npoint)*math.pi*2
 				#tpoints=(np.hstack([np.cos(phi)[:,None],np.sin(phi)[:,None],(phi*0)[:,None]])*random.random())[None,:,:]
 				#tpoints=((np.random.rand(400)-0.5)[:,None]*[0,2,0]+[(random.random()-0.5)*2,0,0]).astype('float32')[None,:,:]
@@ -87,7 +87,7 @@ if __name__=='__main__':
 			#trainmatch=trainmatch.transpose((0,2,1))
 			show=np.zeros((400,400,3),dtype='uint8')^255
 			trainmypoints=sess.run(mypoints)
-			for i in xrange(len(tpoints[0])):
+			for i in range(len(tpoints[0])):
 				u=np.random.choice(range(len(trainmypoints[0])),p=trainmatch[0].T[i])
 				cv2.line(show,
 					(int(tpoints[0][i,1]*100+200),int(tpoints[0][i,0]*100+200)),
@@ -98,7 +98,7 @@ if __name__=='__main__':
 			for x,y,z in trainmypoints[0]:
 				cv2.circle(show,(int(y*100+200),int(x*100+200)),3,cv2.cv.CV_RGB(0,0,255))
 			cost=((tpoints[0][:,None,:]-np.repeat(trainmypoints[0][None,:,:],4,axis=1))**2).sum(axis=2)**0.5
-			print trainloss#,trueloss
+			print(trainloss) #,trueloss
 			cv2.imshow('show',show)
 			cmd=cv2.waitKey(10)%256
 			if cmd==ord('q'):
