@@ -85,8 +85,10 @@ def get_model(point_cloud, is_training, bn_decay=None):
         end_points['z_mean'] = z_mean
         end_points['z_std'] = z_std
         # Sampler: Normal (gaussian) random distribution
-        eps = tf.random_normal(tf.shape(z_std), dtype=tf.float32, mean=0., stddev=1.0, name='epsilon')
-        z = z_mean + tf.exp(z_std / 2) * eps
+        samples = tf.random_normal([batch_size, latent_dim], dtype=tf.float32, mean=0., stddev=1.0, name='epsilon')
+        # z = µ + σ * N (0, 1)
+        z = z_mean + z_std * samples
+        #z = z_mean + tf.exp(z_std / 2) * samples
 
     # UPCONV Decoder
     # (N,1024) -> (N,1,2,512)
