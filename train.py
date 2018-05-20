@@ -14,6 +14,7 @@ sys.path.append(os.path.join(BASE_DIR, 'models'))
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import part_dataset
 import show3d_balls
+import pc_util
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
@@ -200,7 +201,11 @@ def train_one_epoch(sess, ops, train_writer):
         if FLAGS.no_rotation:
             aug_data = batch_data
         else:
-            aug_data = part_dataset.rotate_point_cloud(batch_data)
+            #aug_data = part_dataset.rotate_point_cloud(batch_data)
+            # Augment batched point clouds by rotation and jittering
+            rotated_data = pc_util.rotate_point_cloud(batch_data)
+            jittered_data = pc_util.jitter_point_cloud(rotated_data)
+            aug_data = pc_util.shuffle_point_cloud(jittered_data)
         feed_dict = {ops['pointclouds_pl']: aug_data,
                      ops['labels_pl']: aug_data,
                      ops['is_training_pl']: is_training,}

@@ -111,7 +111,7 @@ def get_loss(pred, label, end_points):
     # KL Divergence loss
     kl_div_loss = 1 + end_points['z_std'] - tf.square(end_points['z_mean']) - tf.exp(end_points['z_std'])
     kl_div_loss = -0.5 * tf.reduce_sum(kl_div_loss, 1)
-    kl_div_loss = tf.reduce_mean(kl_div_loss)
+    kl_div_loss = tf.reduce_mean(kl_div_loss) * 0.001
     end_points['kl_div_loss'] = kl_div_loss
     return loss*100 + kl_div_loss, end_points
 
