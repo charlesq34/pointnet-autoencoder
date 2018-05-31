@@ -15,7 +15,7 @@ For point cloud reconstruction loss function, we need to compile two custum TF o
 For a visualization helper, go to `utils/` and run `sh compile_render_balls_so.sh` -- run `python show3d_balls.py` to test if you have successfully compiled it.
 
 ## Download Data
-ShapeNetPart dataset is available <a href="https://1drv.ms/u/s!ApbTjxa06z9CgRnwX_QiGwiCoWnt" target="_blank">HERE</a> on OneDrive. Simply download the zip file and move the `shapenetcore_partanno_segmentation_benchmark_v0` folder to `data`.
+ShapeNetPart dataset is available <a href="https://shapenet.cs.stanford.edu/media/shapenetcore_partanno_segmentation_benchmark_v0.zip" target="_blank">HERE (635MB)</a>. Simply download the zip file and move the `shapenetcore_partanno_segmentation_benchmark_v0` folder to `data`.
 
 To visualize the dataset, run (type `q` to go to the next shape, see `show3d_balls.py` for more detailed hot keys):
 
