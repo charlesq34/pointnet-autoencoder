@@ -7,7 +7,7 @@ Date: November 2017
 import numpy as np
 import tensorflow as tf
 
-def _variable_on_cpu(name, shape, initializer, use_fp16=False):
+def _variable_on_cpu(name, shape, initializer, use_fp16=False, trainable=True):
   """Helper to create a Variable stored on CPU memory.
   Args:
     name: name of the variable
@@ -18,10 +18,10 @@ def _variable_on_cpu(name, shape, initializer, use_fp16=False):
   """
   with tf.device("/cpu:0"):
     dtype = tf.float16 if use_fp16 else tf.float32
-    var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
+    var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype, trainable=trainable)
   return var
 
-def _variable_with_weight_decay(name, shape, stddev, wd, use_xavier=True):
+def _variable_with_weight_decay(name, shape, stddev, wd, use_xavier=True, trainable=True):
   """Helper to create an initialized Variable with weight decay.
 
   Note that the Variable is initialized with a truncated normal distribution.
@@ -42,12 +42,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd, use_xavier=True):
     initializer = tf.contrib.layers.xavier_initializer()
   else:
     initializer = tf.truncated_normal_initializer(stddev=stddev)
-  var = _variable_on_cpu(name, shape, initializer)
+  var = _variable_on_cpu(name, shape, initializer, trainable=trainable)
   if wd is not None:
     weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
   return var
-
 
 def conv1d(inputs,
            num_output_channels,
@@ -62,6 +61,7 @@ def conv1d(inputs,
            activation_fn=tf.nn.relu,
            bn=False,
            bn_decay=None,
+           trainable=True,
            is_training=None):
   """ 1D convolution with non-linear operation.
 
@@ -96,25 +96,22 @@ def conv1d(inputs,
                                          shape=kernel_shape,
                                          use_xavier=use_xavier,
                                          stddev=stddev,
-                                         wd=weight_decay)
+                                         wd=weight_decay,
+                                         trainable=trainable)
     outputs = tf.nn.conv1d(inputs, kernel,
                            stride=stride,
-                           padding=padding,
-                           data_format=data_format)
+                           padding=padding)
     biases = _variable_on_cpu('biases', [num_output_channels],
-                              tf.constant_initializer(0.0))
-    outputs = tf.nn.bias_add(outputs, biases, data_format=data_format)
+                              tf.constant_initializer(0.0), trainable=trainable)
+    outputs = tf.nn.bias_add(outputs, biases)
 
     if bn:
-      outputs = batch_norm_for_conv1d(outputs, is_training,
-                                      bn_decay=bn_decay, scope='bn',
-                                      data_format=data_format)
+      outputs = batch_norm_for_conv1d(outputs, is_training, trainable=trainable,
+                                      bn_decay=bn_decay, scope='bn', data_format=data_format)
 
     if activation_fn is not None:
       outputs = activation_fn(outputs)
     return outputs
-
-
 
 
 def conv2d(inputs,
@@ -126,10 +123,12 @@ def conv2d(inputs,
            data_format='NHWC',
            use_xavier=True,
            stddev=1e-3,
-           weight_decay=None,
+           weight_decay=0.0,
            activation_fn=tf.nn.relu,
+           bias=True,
            bn=False,
            bn_decay=None,
+           trainable=True,
            is_training=None):
   """ 2D convolution with non-linear operation.
 
@@ -165,25 +164,26 @@ def conv2d(inputs,
                                            shape=kernel_shape,
                                            use_xavier=use_xavier,
                                            stddev=stddev,
-                                           wd=weight_decay)
+                                           wd=weight_decay,
+                                           trainable=trainable)
       stride_h, stride_w = stride
       outputs = tf.nn.conv2d(inputs, kernel,
                              [1, stride_h, stride_w, 1],
                              padding=padding,
                              data_format=data_format)
-      biases = _variable_on_cpu('biases', [num_output_channels],
-                                tf.constant_initializer(0.0))
-      outputs = tf.nn.bias_add(outputs, biases, data_format=data_format)
+      if bias:
+        biases = _variable_on_cpu('biases', [num_output_channels],
+                                  tf.constant_initializer(0.0), trainable=trainable)
+        outputs = tf.nn.bias_add(outputs, biases, data_format=data_format)
 
       if bn:
-        outputs = batch_norm_for_conv2d(outputs, is_training,
+        outputs = batch_norm_for_conv2d(outputs, is_training, trainable=trainable,
                                         bn_decay=bn_decay, scope='bn',
                                         data_format=data_format)
 
       if activation_fn is not None:
         outputs = activation_fn(outputs)
       return outputs
-
 
 def conv2d_transpose(inputs,
                      num_output_channels,
@@ -198,6 +198,7 @@ def conv2d_transpose(inputs,
                      activation_fn=tf.nn.relu,
                      bn=False,
                      bn_decay=None,
+                     trainable=True,
                      is_training=None):
   """ 2D convolution transpose with non-linear operation.
 
@@ -230,7 +231,8 @@ def conv2d_transpose(inputs,
                                            shape=kernel_shape,
                                            use_xavier=use_xavier,
                                            stddev=stddev,
-                                           wd=weight_decay)
+                                           wd=weight_decay,
+                                           trainable=trainable)
       stride_h, stride_w = stride
       
       # from slim.convolution2d_transpose
@@ -253,19 +255,17 @@ def conv2d_transpose(inputs,
                              [1, stride_h, stride_w, 1],
                              padding=padding)
       biases = _variable_on_cpu('biases', [num_output_channels],
-                                tf.constant_initializer(0.0))
+                                tf.constant_initializer(0.0), trainable=trainable)
       outputs = tf.nn.bias_add(outputs, biases)
 
       if bn:
-        outputs = batch_norm_for_conv2d(outputs, is_training,
+        outputs = batch_norm_for_conv2d(outputs, is_training, trainable=trainable,
                                         bn_decay=bn_decay, scope='bn',
                                         data_format=data_format)
 
       if activation_fn is not None:
         outputs = activation_fn(outputs)
       return outputs
-
-   
 
 def conv3d(inputs,
            num_output_channels,
@@ -279,6 +279,7 @@ def conv3d(inputs,
            activation_fn=tf.nn.relu,
            bn=False,
            bn_decay=None,
+           trainable=True,
            is_training=None):
   """ 3D convolution with non-linear operation.
 
@@ -309,17 +310,18 @@ def conv3d(inputs,
                                          shape=kernel_shape,
                                          use_xavier=use_xavier,
                                          stddev=stddev,
-                                         wd=weight_decay)
+                                         wd=weight_decay,
+                                         trainable=trainable)
     stride_d, stride_h, stride_w = stride
     outputs = tf.nn.conv3d(inputs, kernel,
                            [1, stride_d, stride_h, stride_w, 1],
                            padding=padding)
     biases = _variable_on_cpu('biases', [num_output_channels],
-                              tf.constant_initializer(0.0))
+                              tf.constant_initializer(0.0), trainable=trainable)
     outputs = tf.nn.bias_add(outputs, biases)
     
     if bn:
-      outputs = batch_norm_for_conv3d(outputs, is_training,
+      outputs = batch_norm_for_conv3d(outputs, is_training, trainable=trainable,
                                       bn_decay=bn_decay, scope='bn')
 
     if activation_fn is not None:
@@ -335,6 +337,7 @@ def fully_connected(inputs,
                     activation_fn=tf.nn.relu,
                     bn=False,
                     bn_decay=None,
+                    trainable=True,
                     is_training=None):
   """ Fully connected layer with non-linear operation.
   
@@ -351,19 +354,19 @@ def fully_connected(inputs,
                                           shape=[num_input_units, num_outputs],
                                           use_xavier=use_xavier,
                                           stddev=stddev,
-                                          wd=weight_decay)
+                                          wd=weight_decay,
+                                          trainable=trainable)
     outputs = tf.matmul(inputs, weights)
     biases = _variable_on_cpu('biases', [num_outputs],
-                             tf.constant_initializer(0.0))
+                             tf.constant_initializer(0.0), trainable=trainable)
     outputs = tf.nn.bias_add(outputs, biases)
      
     if bn:
-      outputs = batch_norm_for_fc(outputs, is_training, bn_decay, 'bn')
+      outputs = batch_norm_for_fc(outputs, is_training, bn_decay, trainable, 'bn')
 
     if activation_fn is not None:
       outputs = activation_fn(outputs)
     return outputs
-
 
 def max_pool2d(inputs,
                kernel_size,
@@ -415,7 +418,6 @@ def avg_pool2d(inputs,
                              name=sc.name)
     return outputs
 
-
 def max_pool3d(inputs,
                kernel_size,
                scope,
@@ -466,55 +468,10 @@ def avg_pool3d(inputs,
                                name=sc.name)
     return outputs
 
-
-def batch_norm_template_unused(inputs, is_training, scope, moments_dims, bn_decay):
-  """ NOTE: this is older version of the util func. it is deprecated.
-  Batch normalization on convolutional maps and beyond...
-  Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
-  
-  Args:
-      inputs:        Tensor, k-D input ... x C could be BC or BHWC or BDHWC
-      is_training:   boolean tf.Varialbe, true indicates training phase
-      scope:         string, variable scope
-      moments_dims:  a list of ints, indicating dimensions for moments calculation
-      bn_decay:      float or float tensor variable, controling moving average weight
-  Return:
-      normed:        batch-normalized maps
-  """
-  with tf.variable_scope(scope) as sc:
-    num_channels = inputs.get_shape()[-1].value
-    beta = _variable_on_cpu(name='beta',shape=[num_channels],
-                            initializer=tf.constant_initializer(0))
-    gamma = _variable_on_cpu(name='gamma',shape=[num_channels],
-                            initializer=tf.constant_initializer(1.0))
-    batch_mean, batch_var = tf.nn.moments(inputs, moments_dims, name='moments')
-    decay = bn_decay if bn_decay is not None else 0.9
-    ema = tf.train.ExponentialMovingAverage(decay=decay)
-    # Operator that maintains moving averages of variables.
-    # Need to set reuse=False, otherwise if reuse, will see moments_1/mean/ExponentialMovingAverage/ does not exist
-    # https://github.com/shekkizh/WassersteinGAN.tensorflow/issues/3
-    with tf.variable_scope(tf.get_variable_scope(), reuse=False):
-        ema_apply_op = tf.cond(is_training,
-                               lambda: ema.apply([batch_mean, batch_var]),
-                               lambda: tf.no_op())
-    
-    # Update moving average and return current batch's avg and var.
-    def mean_var_with_update():
-      with tf.control_dependencies([ema_apply_op]):
-        return tf.identity(batch_mean), tf.identity(batch_var)
-    
-    # ema.average returns the Variable holding the average of var.
-    mean, var = tf.cond(is_training,
-                        mean_var_with_update,
-                        lambda: (ema.average(batch_mean), ema.average(batch_var)))
-    normed = tf.nn.batch_normalization(inputs, mean, var, beta, gamma, 1e-3)
-  return normed
-
-
-def batch_norm_template(inputs, is_training, scope, moments_dims_unused, bn_decay, data_format='NHWC'):
+def batch_norm_template(inputs, is_training, scope, moments_dims_unused, bn_decay, trainable=True, data_format='NHWC'):
   """ Batch normalization on convolutional maps and beyond...
   Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
-  
+
   Args:
       inputs:        Tensor, k-D input ... x C could be BC or BHWC or BDHWC
       is_training:   boolean tf.Varialbe, true indicates training phase
@@ -526,14 +483,13 @@ def batch_norm_template(inputs, is_training, scope, moments_dims_unused, bn_deca
       normed:        batch-normalized maps
   """
   bn_decay = bn_decay if bn_decay is not None else 0.9
-  return tf.contrib.layers.batch_norm(inputs, 
+  return tf.contrib.layers.batch_norm(inputs,
                                       center=True, scale=True,
                                       is_training=is_training, decay=bn_decay,updates_collections=None,
-                                      scope=scope,
+                                      scope=scope, trainable=trainable,
                                       data_format=data_format)
 
-
-def batch_norm_for_fc(inputs, is_training, bn_decay, scope):
+def batch_norm_for_fc(inputs, is_training, bn_decay, trainable, scope):
   """ Batch normalization on FC data.
   
   Args:
@@ -544,10 +500,9 @@ def batch_norm_for_fc(inputs, is_training, bn_decay, scope):
   Return:
       normed:      batch-normalized maps
   """
-  return batch_norm_template(inputs, is_training, scope, [0,], bn_decay)
+  return batch_norm_template(inputs, is_training, scope, [0,], bn_decay, trainable=trainable)
 
-
-def batch_norm_for_conv1d(inputs, is_training, bn_decay, scope, data_format):
+def batch_norm_for_conv1d(inputs, is_training, bn_decay, trainable, scope, data_format):
   """ Batch normalization on 1D convolutional maps.
   
   Args:
@@ -559,12 +514,9 @@ def batch_norm_for_conv1d(inputs, is_training, bn_decay, scope, data_format):
   Return:
       normed:      batch-normalized maps
   """
-  return batch_norm_template(inputs, is_training, scope, [0,1], bn_decay, data_format)
+  return batch_norm_template(inputs, is_training, scope, [0,1], bn_decay, trainable=trainable, data_format=data_format)
 
-
-
-  
-def batch_norm_for_conv2d(inputs, is_training, bn_decay, scope, data_format):
+def batch_norm_for_conv2d(inputs, is_training, bn_decay, trainable, scope, data_format):
   """ Batch normalization on 2D convolutional maps.
   
   Args:
@@ -576,10 +528,9 @@ def batch_norm_for_conv2d(inputs, is_training, bn_decay, scope, data_format):
   Return:
       normed:      batch-normalized maps
   """
-  return batch_norm_template(inputs, is_training, scope, [0,1,2], bn_decay, data_format)
+  return batch_norm_template(inputs, is_training, scope, [0,1,2], bn_decay, trainable=trainable, data_format=data_format)
 
-
-def batch_norm_for_conv3d(inputs, is_training, bn_decay, scope):
+def batch_norm_for_conv3d(inputs, is_training, bn_decay, trainable, scope):
   """ Batch normalization on 3D convolutional maps.
   
   Args:
@@ -590,8 +541,7 @@ def batch_norm_for_conv3d(inputs, is_training, bn_decay, scope):
   Return:
       normed:      batch-normalized maps
   """
-  return batch_norm_template(inputs, is_training, scope, [0,1,2,3], bn_decay)
-
+  return batch_norm_template(inputs, is_training, scope, [0,1,2,3], bn_decay, trainable=trainable)
 
 def dropout(inputs,
             is_training,
