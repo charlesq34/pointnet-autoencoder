@@ -103,7 +103,7 @@ def conv1d(inputs,
                            padding=padding)
     biases = _variable_on_cpu('biases', [num_output_channels],
                               tf.constant_initializer(0.0), trainable=trainable)
-    outputs = tf.nn.bias_add(outputs, biases)
+    outputs = tf.nn.bias_add(outputs, biases, data_format=data_format)
 
     if bn:
       outputs = batch_norm_for_conv1d(outputs, is_training, trainable=trainable,
@@ -123,7 +123,7 @@ def conv2d(inputs,
            data_format='NHWC',
            use_xavier=True,
            stddev=1e-3,
-           weight_decay=0.0,
+           weight_decay=None,
            activation_fn=tf.nn.relu,
            bias=True,
            bn=False,
@@ -360,7 +360,7 @@ def fully_connected(inputs,
     biases = _variable_on_cpu('biases', [num_outputs],
                              tf.constant_initializer(0.0), trainable=trainable)
     outputs = tf.nn.bias_add(outputs, biases)
-     
+
     if bn:
       outputs = batch_norm_for_fc(outputs, is_training, bn_decay, trainable, 'bn')
 
