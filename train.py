@@ -9,13 +9,12 @@ import importlib
 import os
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = BASE_DIR
-sys.path.append(BASE_DIR) # model
-sys.path.append(os.path.join(ROOT_DIR, 'models'))
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-sys.path.append(os.path.join(ROOT_DIR, 'data_prep'))
+sys.path.append(BASE_DIR)
+sys.path.append(os.path.join(BASE_DIR, 'models'))
+sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import part_dataset
 import show3d_balls
+import pc_util
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
@@ -46,7 +45,7 @@ DECAY_STEP = FLAGS.decay_step
 DECAY_RATE = FLAGS.decay_rate
 
 MODEL = importlib.import_module(FLAGS.model) # import network module
-MODEL_FILE = os.path.join(BASE_DIR, FLAGS.model+'.py')
+MODEL_FILE = os.path.join(os.path.join(BASE_DIR, 'models', FLAGS.model+'.py'))
 LOG_DIR = FLAGS.log_dir
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR)) # bkp of model def
@@ -79,7 +78,7 @@ def get_learning_rate(batch):
                         DECAY_RATE,          # Decay rate.
                         staircase=True)
     learing_rate = tf.maximum(learning_rate, 0.00001) # CLIP THE LEARNING RATE!
-    return learning_rate        
+    return learning_rate
 
 def get_bn_decay(batch):
     bn_momentum = tf.train.exponential_decay(
@@ -96,21 +95,21 @@ def train():
         with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT)
             is_training_pl = tf.placeholder(tf.bool, shape=())
-            print is_training_pl
-            
-            # Note the global_step=batch parameter to minimize. 
+            print(is_training_pl)
+
+            # Note the global_step=batch parameter to minimize.
             # That tells the optimizer to helpfully increment the 'batch' parameter for you every time it trains.
             batch = tf.Variable(0)
             bn_decay = get_bn_decay(batch)
             tf.summary.scalar('bn_decay', bn_decay)
 
-            print "--- Get model and loss"
-            # Get model and loss 
+            print("--- Get model and loss")
+            # Get model and loss
             pred, end_points = MODEL.get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
             loss, end_points = MODEL.get_loss(pred, labels_pl, end_points)
             tf.summary.scalar('loss', loss)
 
-            print "--- Get training operator"
+            print("--- Get training operator")
             # Get training operator
             learning_rate = get_learning_rate(batch)
             tf.summary.scalar('learning_rate', learning_rate)
@@ -119,10 +118,14 @@ def train():
             elif OPTIMIZER == 'adam':
                 optimizer = tf.train.AdamOptimizer(learning_rate)
             train_op = optimizer.minimize(loss, global_step=batch)
-            
+
             # Add ops to save and restore all the variables.
             saver = tf.train.Saver()
-        
+
+        # Statistic parameters
+        parameter_num = np.sum([np.prod(v.shape.as_list()) for v in tf.trainable_variables()])
+        print('Parameter number: {}'.format(parameter_num))
+
         # Create a session
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -154,7 +157,7 @@ def train():
         for epoch in range(MAX_EPOCH):
             log_string('**** EPOCH %03d ****' % (epoch))
             sys.stdout.flush()
-             
+
             train_one_epoch(sess, ops, train_writer)
             epoch_loss = eval_one_epoch(sess, ops, test_writer)
             if epoch_loss < best_loss:
@@ -180,12 +183,12 @@ def get_batch(dataset, idxs, start_idx, end_idx):
 def train_one_epoch(sess, ops, train_writer):
     """ ops: dict mapping from string to tf ops """
     is_training = True
-    
+
     # Shuffle train samples
     train_idxs = np.arange(0, len(TRAIN_DATASET))
     np.random.shuffle(train_idxs)
-    num_batches = len(TRAIN_DATASET)/BATCH_SIZE
-    
+    num_batches = len(TRAIN_DATASET) // BATCH_SIZE
+
     log_string(str(datetime.now()))
 
     loss_sum = 0
@@ -198,7 +201,11 @@ def train_one_epoch(sess, ops, train_writer):
         if FLAGS.no_rotation:
             aug_data = batch_data
         else:
-            aug_data = part_dataset.rotate_point_cloud(batch_data)
+            #aug_data = part_dataset.rotate_point_cloud(batch_data)
+            # Augment batched point clouds by rotation and jittering
+            rotated_data = pc_util.rotate_point_cloud(batch_data)
+            jittered_data = pc_util.jitter_point_cloud(rotated_data)
+            aug_data = pc_util.shuffle_point_cloud(jittered_data)
         feed_dict = {ops['pointclouds_pl']: aug_data,
                      ops['labels_pl']: aug_data,
                      ops['is_training_pl']: is_training,}
@@ -216,18 +223,18 @@ def train_one_epoch(sess, ops, train_writer):
             total_seen = 0
             loss_sum = 0
             pcloss_sum = 0
-        
+
 
 def eval_one_epoch(sess, ops, test_writer):
     """ ops: dict mapping from string to tf ops """
     global EPOCH_CNT
     is_training = False
     test_idxs = np.arange(0, len(TEST_DATASET))
-    num_batches = len(TEST_DATASET)/BATCH_SIZE
+    num_batches = len(TEST_DATASET) // BATCH_SIZE
 
     log_string(str(datetime.now()))
     log_string('---- EPOCH %03d EVALUATION ----'%(EPOCH_CNT))
-    
+
     loss_sum = 0
     pcloss_sum = 0
     for batch_idx in range(num_batches):
@@ -245,7 +252,7 @@ def eval_one_epoch(sess, ops, test_writer):
         pcloss_sum += pcloss_val
     log_string('eval mean loss: %f' % (loss_sum / float(num_batches)))
     log_string('eval mean pc loss: %f' % (pcloss_sum / float(num_batches)))
-         
+
     EPOCH_CNT += 1
     return loss_sum/float(num_batches)
 

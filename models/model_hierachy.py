@@ -16,9 +16,14 @@ import tf_util
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/nn_distance'))
 import tf_nndistance
 
-def placeholder_inputs(batch_size, num_point):
-    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3))
-    labels_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3))
+
+num_point = 0
+
+def placeholder_inputs(batch_size, n_point):
+    global num_point
+    num_point = n_point
+    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, None, 3))
+    labels_pl = tf.placeholder(tf.float32, shape=(batch_size, None, 3))
     return pointclouds_pl, labels_pl
 
 
@@ -32,8 +37,8 @@ def get_model(point_cloud, is_training, bn_decay=None):
         pc_xyz: TF tensor BxNxC, reconstructed point clouds
         end_points: dict
     """
+    global num_point
     batch_size = point_cloud.get_shape()[0].value
-    num_point = point_cloud.get_shape()[1].value
     point_dim = point_cloud.get_shape()[2].value
     end_points = {}
 
@@ -60,8 +65,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
                          scope='conv5', bn_decay=bn_decay)
-    global_feat = tf_util.max_pool2d(net, [num_point,1],
-                                     padding='VALID', scope='maxpool')
+    global_feat = tf.reduce_max(net, axis=1, keepdims=False)
 
     net = tf.reshape(global_feat, [batch_size, -1])
     net = tf_util.fully_connected(net, 512, bn=True, is_training=is_training, scope='fc00', bn_decay=bn_decay)
@@ -78,10 +82,13 @@ def get_model(point_cloud, is_training, bn_decay=None):
     pc1_xyz = tf.reshape(pc1_xyz, [batch_size, 64, 3])
     end_points['pc1_xyz'] = pc1_xyz
 
+    # (N,64,256) -> (N, 64, sampled*3) -> (N, 64, sampled, 3)
+    sampled = num_point // 64 # 32(2048/64)
     pc2 = tf_util.conv1d(pc1_feat, 256, 1, padding='VALID', stride=1, bn=True, is_training=is_training, scope='fc_conv1', bn_decay=bn_decay)
-    pc2_xyz = tf_util.conv1d(pc2, (num_point/64)*3, 1, padding='VALID', stride=1, activation_fn=None, scope='fc_conv3') # B,64,32*3
-    pc2_xyz = tf.reshape(pc2_xyz, [batch_size, 64, num_point/64, 3])
-    pc1_xyz_expand = tf.expand_dims(pc1_xyz, 2) # B,64,1,3
+    pc2_xyz = tf_util.conv1d(pc2, sampled*3, 1, padding='VALID', stride=1, activation_fn=None, scope='fc_conv3')
+    pc2_xyz = tf.reshape(pc2_xyz, [batch_size, 64, sampled, 3])
+    # (N,64,3) -> (N,64,1,3)
+    pc1_xyz_expand = tf.expand_dims(pc1_xyz, 2)
     # Translate local XYZs to global XYZs
     pc2_xyz = pc2_xyz + pc1_xyz_expand
     pc_xyz = tf.reshape(pc2_xyz, [batch_size, num_point, 3])
